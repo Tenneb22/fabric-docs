@@ -2,12 +2,51 @@
 import { Icon, loadIcon } from "@iconify/vue";
 import { usePreferredReducedMotion } from "@vueuse/core";
 import { onContentUpdated, useData } from "vitepress";
-import { computed, nextTick, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { Fabric } from "../../types";
 
 const prefersReducedMotion = usePreferredReducedMotion();
 const data = useData();
 const options = computed(() => data.theme.value.code as Fabric.CodeOptions);
+
+export interface OpenFullscreenCodeDetail {
+  code: string;
+  lang?: string;
+  title?: string;
+}
+
+const handleOpenEvent = (event: Event) => {
+  const detail = (event as CustomEvent<OpenFullscreenCodeDetail>).detail;
+  if (!detail) return;
+
+  const lang = detail.lang ?? "text";
+  const code = detail.code ?? "";
+
+  const container = document.createElement("div");
+  container.className = `language-${lang}`;
+  container.innerHTML = `<pre class="shiki"><code>${escapeHtml(code)}</code></pre>`;
+
+  const slot = dialog.value?.querySelector<HTMLDivElement>("div.slot");
+  slot?.replaceChildren(container);
+
+  dialog.value?.showModal();
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+};
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+onMounted(() =>
+  window.addEventListener("open-fullscreen-code", handleOpenEvent as EventListener)
+);
+
+onUnmounted(() => {
+  window.removeEventListener("open-fullscreen-code", handleOpenEvent as EventListener);
+  dialog.value?.close();
+});
 
 const dialog = ref<HTMLDialogElement>();
 const originalCopyButton = ref<HTMLButtonElement>();
@@ -146,8 +185,6 @@ onContentUpdated(() =>
     }
   })
 );
-
-onUnmounted(() => dialog.value?.close());
 </script>
 
 <template>

@@ -38,6 +38,9 @@ const getImageSrc = (href: string) =>
 const getFileHref = (path: string) =>
   path.replace(/^@/, "https://github.com/FabricMC/fabric-docs/blob/-");
 
+const getRawFileHref = (path: string) =>
+  path.replace(/^@/, "https://raw.githubusercontent.com/FabricMC/fabric-docs/refs/heads/main");
+
 const getFileTitle = (path: string) =>
   path.replace(/^@[/]reference[/][^/]+[/]/, "").replace("com/example/docs", "...");
 
@@ -46,6 +49,20 @@ const getFileExtension = (path: string) =>
     .replace(/^.*[.]([^.]+)$/, "$1")
     .replace(/^classtweaker$/, "document")
     .replace(/^md$/, "markdown");
+
+const openFile = async (path: string) => {
+  const response = await fetch(getRawFileHref(path));
+  if (!response.ok) {
+    window.open(getFileHref(path), "_blank");
+    return;
+  }
+
+  const code = await response.text();
+  const lang = getFileExtension(path);
+  window.dispatchEvent(
+    new CustomEvent("open-fullscreen-code", { detail: { code, lang, title: getFileTitle(path) } })
+  );
+};
 </script>
 
 <template>
@@ -56,7 +73,14 @@ const getFileExtension = (path: string) =>
   </VPLink>
 
   <h2 v-if="files.length">{{ options.files }}</h2>
-  <VPLink v-for="(f, i) in files" :key="f" :href="getFileHref(f)" :title="getFileTitle(f)" noIcon>
+  <VPLink
+    v-for="(f, i) in files"
+    :key="f"
+    :href="getFileHref(f)"
+    :title="getFileTitle(f)"
+    noIcon
+    @click.prevent="openFile(f)"
+  >
     <Icon :icon="`material-icon-theme:${getFileExtension(f)}`" />
     <code>
       <template v-for="(seg, j) in shortestUniquePaths[i].split('/')" :key="j">
